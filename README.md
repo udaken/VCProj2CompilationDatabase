@@ -15,23 +15,28 @@ Visual C++ 2008 Project File(.vcproj) To clang Compilation database(compile_comm
 ## Usage
 
 ```
-VCProj2CompilationDatabase.exe
+VCProj2CompilationDatabase.exe <path to vcproj file>
 
   --buildtarget               (Default: Release|Win32) Configuration and Platform. e.g. Release|Win32
 
-  -h, --skipheader            Skip header file.
+  -h, --skipheaders            Skip header files.
 
-  -u, --utf8                  Convert file encoding to UTF8withBOM.
+  -u, --utf8                  Only Convert file encoding to UTF8withBOM.
 
-  -p, --printplatforms        Print installed platforms.
+  --printplatforms        Print installed platforms.
 
   --help                      Display this help screen.
 
   --version                   Display version information.
 
-  projectfilepath (pos. 0)    Required.
 ```
 
 ## License
 
 MIT License
+
+## TODO
+
+- Upgrade to .Net Core.
+- Separate to system includes and user includes.
+- Support PropertySheets.

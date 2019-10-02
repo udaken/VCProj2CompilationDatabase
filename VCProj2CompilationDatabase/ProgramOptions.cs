@@ -1,16 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Runtime.InteropServices;
-using System.Runtime.InteropServices.ComTypes;
-using VCProjectEngineLibrary;
-using WCE = VCProjectWCEPlatformLibrary;
-using static System.Console;
-using System.Text.Json;
-using System.IO;
-using CommandLine;
+﻿using CommandLine;
+using System;
 
 namespace VCProj2json
 {
@@ -22,13 +11,19 @@ namespace VCProj2json
         [Option("buildtarget", Default = "Release|Win32", HelpText = "Configuration and Platform. e.g. Release|Win32")]
         public string BuildTarget { get; set; }
 
-        [Option('h', "skipheader", Required = false, HelpText ="Skip header file.")]
-        public bool SkipHeader { get; set; } = false;
+        [Option('h', "skipheader", Required = false, Default = false, HelpText = "Skip header files.")]
+        public bool SkipHeader { get; set; }
 
-        [Option('u', "utf8", Required = false, HelpText = "Convert file encoding to UTF8withBOM.")]
-        public bool ConvertToUtf8 { get; set; } = false;
+        [Option('u', "utf8", Required = false, Default = false, HelpText = "Only Convert file encoding to UTF8withBOM.")]
+        public bool OnlyConvertToUtf8 { get; set; }
 
-        [Option('p',"printplatforms", Required = false, HelpText = "Print installed platforms.")]
-        public bool PrintPlatforms { get; set; } = false;
+        [Option('a', "autoutf8", Required = false, Default = false, HelpText = "Convert file encoding to UTF8withBOM on the fly.")]
+        public bool ConvertToUtf8OnTheFly { get; set; }
+
+        [Option("printplatforms", Required = false, Default = false, HelpText = "Print installed platforms.")]
+        public bool PrintPlatforms { get; set; }
+
+        [Option('w', "nowwarnaserror", Required = false, Default = false)]
+        public bool NowWarnAsError { get; set; }
     }
 }

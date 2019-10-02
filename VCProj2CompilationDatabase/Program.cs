@@ -123,6 +123,9 @@ namespace VCProj2json
                 }
             }
 
+            if (options.OnlyConvertToUtf8)
+                return 0;
+
             using (var stream = File.OpenWrite(Path.Combine(dir, CompileCommandsJson)))
             {
                 stream.SetLength(0);
@@ -150,7 +153,7 @@ namespace VCProj2json
             }
         }
 
-        static Encoding UTF8BomEncoding = new UTF8Encoding(true);
+        static Encoding UTF8BomEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier:  true);
         static void ConverToUtf8(string path)
         {
             using (var source = File.OpenRead(path))
@@ -200,9 +203,11 @@ namespace VCProj2json
                 return null;
 
             WriteLine(file.RelativePath);
-            if (options.ConvertToUtf8)
+            if (options.OnlyConvertToUtf8 || options.ConvertToUtf8OnTheFly)
             {
                 ConverToUtf8(file.FullPath);
+                if (options.OnlyConvertToUtf8)
+                    return null;
             }
 
             entry.file = StripCurrentDir(file.RelativePath);
@@ -220,6 +225,7 @@ namespace VCProj2json
             var tool = fileTool ?? projectTool;
 
             entry.AddArg(isWin64 ? "-m64" : "-m32");
+            entry.AddArg("-fshort-wchar");
 
             AddPath(entry, "-D ", fileConfig.Evaluate(projectTool.PreprocessorDefinitions + fileTool?.PreprocessorDefinitions) ?? "");
             AddPath(entry, "-U ", fileConfig.Evaluate(projectTool.UndefinePreprocessorDefinitions + fileTool?.UndefinePreprocessorDefinitions) ?? "");
@@ -267,7 +273,7 @@ namespace VCProj2json
                     break;
             }
 
-            if (tool.WarnAsError)
+            if (!options.NowWarnAsError && tool.WarnAsError)
                 entry.AddArg("-Werror");
 
             switch (tool.Optimization)
@@ -292,7 +298,7 @@ namespace VCProj2json
             {
                 case cppExceptionHandling.cppExceptionHandlingYesWithSEH:
                     entry.AddArg("-fseh-exceptions");
-                    if(tool.CompileAs == CompileAsOptions.compileAsCPlusPlus)
+                    if (tool.CompileAs == CompileAsOptions.compileAsCPlusPlus)
                         entry.AddArg("-fcxx-exceptions");
                     break;
                 case cppExceptionHandling.cppExceptionHandlingYes:
@@ -421,6 +427,12 @@ namespace VCProj2json
 
             if (tool.UndefineAllPreprocessorDefinitions)
                 entry.AddArg("-undef");
+
+            if(!tool.StringPooling)
+                entry.AddArg("-fwritable-strings");
+
+            if(tool.DefaultCharIsUnsigned)
+                entry.AddArg("-fno-signed-char");
 
             switch (tool.StructMemberAlignment)
             {
