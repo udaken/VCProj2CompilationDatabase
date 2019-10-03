@@ -116,7 +116,7 @@ namespace VCProj2json
                     m.Success ? m.Groups[1].Value.ToLower() :
                     "i386";
 
-                var entry = ProcessVCFile(options, baseObj.Clone(), file, fileConfig, platform == "Win64");
+                var entry = ProcessVCFile(options, baseObj.Clone(), file, fileConfig, arch, platform == "Win64");
                 if (entry != null)
                 {
                     output.Add(entry);
@@ -142,6 +142,8 @@ namespace VCProj2json
         const string CompileCommandsJson = "compile_commands.json";
         const string VCCLCompilerToolName = "VCCLCompilerTool";
 
+        static Encoding UTF8BomEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: true);
+
         static void AddPath(FileCompilationInfo entry, string prefix, string path)
         {
             if (string.IsNullOrWhiteSpace(path))
@@ -153,7 +155,6 @@ namespace VCProj2json
             }
         }
 
-        static Encoding UTF8BomEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier:  true);
         static void ConverToUtf8(string path)
         {
             using (var source = File.OpenRead(path))
@@ -174,9 +175,10 @@ namespace VCProj2json
         }
 
         static string StripCurrentDir(string path) => path.StartsWith(".\\", StringComparison.Ordinal) ? path.Substring(2) : path;
+
         static string QuatePath(string path) => "\"" + path + "\"";
 
-        static FileCompilationInfo ProcessVCFile(ProgramOptions options, FileCompilationInfo entry, VCFile file, VCFileConfiguration fileConfig, bool isWin64)
+        static FileCompilationInfo ProcessVCFile(ProgramOptions options, FileCompilationInfo entry, VCFile file, VCFileConfiguration fileConfig, string arch, bool isWin64)
         {
             //WriteLine($"{file.RelativePath}: {file.FileType},{file.Kind},{file.SubType},{file.ItemName},{file.UnexpandedRelativePath}");
             if (fileConfig.ExcludedFromBuild)
@@ -198,9 +200,6 @@ namespace VCProj2json
                     return null;
             }
             var isHeader = (file.FileType == eFileType.eFileTypeCppHeader);
-
-            if (isHeader && options.SkipHeader)
-                return null;
 
             WriteLine(file.RelativePath);
             if (options.OnlyConvertToUtf8 || options.ConvertToUtf8OnTheFly)
@@ -224,7 +223,15 @@ namespace VCProj2json
             // if file is header, filetool is null.
             var tool = fileTool ?? projectTool;
 
+            if (isHeader && !options.IncludesHeaderFiles)
+                return null;
+
+            var createPch = tool.UsePrecompiledHeader == pchOption.pchCreateUsingSpecific;
+            var pchFilePath = fileConfig.Evaluate(tool.PrecompiledHeaderFile);
+
             entry.AddArg(isWin64 ? "-m64" : "-m32");
+            entry.AddArg("--target=" + arch + "-pc-windows-msvc");
+
             entry.AddArg("-fshort-wchar");
 
             AddPath(entry, "-D ", fileConfig.Evaluate(projectTool.PreprocessorDefinitions + fileTool?.PreprocessorDefinitions) ?? "");
@@ -232,7 +239,13 @@ namespace VCProj2json
             AddPath(entry, "-I ", tool.FullIncludePath);
             AddPath(entry, "-include ", fileConfig.Evaluate(tool.ForcedIncludeFiles ?? projectTool.ForcedIncludeFiles));
 
-            if (isHeader)
+            if(createPch)
+            {
+                entry.output = pchFilePath;
+                entry.AddArg("-o");
+                entry.AddArg(QuatePath(entry.output));
+            }
+            else if (isHeader)
             {
                 entry.AddArg("-S"); // Only run preprocess and compilation steps
                 // fsyntax-only
@@ -245,6 +258,13 @@ namespace VCProj2json
                 entry.AddArg("-o");
                 entry.AddArg(QuatePath(entry.output));
             }
+
+            if (tool.UsePrecompiledHeader == pchOption.pchUseUsingSpecific)
+            {
+                entry.AddArg("-include-pch");
+                entry.AddArg(QuatePath(pchFilePath));
+            }
+
 
             switch (tool.WarningLevel)
             {
@@ -328,11 +348,11 @@ namespace VCProj2json
             switch (tool.CompileAs)
             {
                 case CompileAsOptions.compileAsC:
-                    entry.AddArg("-x c");
+                    entry.AddArg("-x c" + (createPch ? "-header" : ""));
                     entry.AddArg("-std=c99");
                     break;
                 case CompileAsOptions.compileAsCPlusPlus:
-                    entry.AddArg("-x c++");
+                    entry.AddArg("-x c++" + (createPch ? "-header" : ""));
                     entry.AddArg("-std=c++03");
                     break;
             }
@@ -428,10 +448,10 @@ namespace VCProj2json
             if (tool.UndefineAllPreprocessorDefinitions)
                 entry.AddArg("-undef");
 
-            if(!tool.StringPooling)
+            if (!tool.StringPooling)
                 entry.AddArg("-fwritable-strings");
 
-            if(tool.DefaultCharIsUnsigned)
+            if (tool.DefaultCharIsUnsigned)
                 entry.AddArg("-fno-signed-char");
 
             switch (tool.StructMemberAlignment)
@@ -455,14 +475,17 @@ namespace VCProj2json
                     break;
             }
 
-            entry.AddArg(QuatePath(entry.file));
-
             switch (tool.floatingPointModel)
             {
                 case floatingPointModel.FloatingPointFast:
                     entry.AddArg("-ffast-math");
                     break;
             }
+
+            entry.AddArg(QuatePath(entry.file));
+
+            if (options.PrintClangCommand)
+                Console.Error.WriteLine(entry.ToString());
 
             return entry;
 

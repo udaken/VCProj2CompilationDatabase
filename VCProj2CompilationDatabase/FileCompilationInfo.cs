@@ -85,5 +85,7 @@ namespace VCProj2json
                 arguments.Add(arg);
             }
         }
+
+        public override string ToString() => command ?? string.Join(" ", arguments);
     }
 }
