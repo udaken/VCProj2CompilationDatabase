@@ -6,7 +6,8 @@ Visual C++ 2008 Project File(.vcproj) To clang Compilation database(compile_comm
 
 ### To Use
 
-- Visual Studio 2008 Installed. (using VCProjectEngineLibrary.dll)
+- Visual Studio 2008 Installed. (using VCProjectEngine.dll)
+- Build.
 
 ### To Build
 
@@ -15,15 +16,21 @@ Visual C++ 2008 Project File(.vcproj) To clang Compilation database(compile_comm
 ## Usage
 
 ```
-VCProj2CompilationDatabase.exe <path to vcproj file>
+VCProj2CompilationDatabase.exe <path to vcproj file> [--buildtarget <Configuration|Platform>]
 
   --buildtarget               (Default: Release|Win32) Configuration and Platform. e.g. Release|Win32
 
-  -h, --skipheaders            Skip header files.
+  -i, --includesheader        Include header files.
 
   -u, --utf8                  Only Convert file encoding to UTF8withBOM.
 
-  --printplatforms        Print installed platforms.
+  -a, --autoutf8              Convert file encoding to UTF8withBOM on the fly.
+
+  -w, --nowwarnaserror        
+
+  --printplatforms            Print installed platforms.
+
+  --printclangcommand         
 
   --help                      Display this help screen.
 

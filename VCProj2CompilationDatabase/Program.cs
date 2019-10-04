@@ -239,7 +239,7 @@ namespace VCProj2json
             AddPath(entry, "-I ", tool.FullIncludePath);
             AddPath(entry, "-include ", fileConfig.Evaluate(tool.ForcedIncludeFiles ?? projectTool.ForcedIncludeFiles));
 
-            if(createPch)
+            if (createPch)
             {
                 entry.output = pchFilePath;
                 entry.AddArg("-o");
@@ -475,11 +475,21 @@ namespace VCProj2json
                     break;
             }
 
+            if (tool.OmitFramePointers)
+            {
+                entry.AddArg("-momit-leaf-frame-pointer");
+            }
+
             switch (tool.floatingPointModel)
             {
                 case floatingPointModel.FloatingPointFast:
                     entry.AddArg("-ffast-math");
                     break;
+            }
+
+            if (tool.EnablePREfast)
+            {
+                entry.AddArg("--analyze");
             }
 
             entry.AddArg(QuatePath(entry.file));
